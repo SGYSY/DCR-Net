@@ -36,3 +36,33 @@ class BiRNNEncoder(nn.Module):
         h_n = h_n.view(1, 2, batch_size, -1).transpose(0, 2)
         utterance_representation = torch.cat((h_n[:, -1, 0, :], h_n[:, -1, 1, :]), dim=1)
         return utterance_representation
+
+
+class SelfAttention(nn.Module):
+    def __init__(self, hidden_dim: int, dropout_rate: float):
+        super().__init__()
+
+        self.Wq = nn.Linear(hidden_dim, hidden_dim)
+        self.Wk = nn.Linear(hidden_dim, hidden_dim)
+        self.Wv = nn.Linear(hidden_dim, hidden_dim)
+
+        self.dropout = nn.Dropout(dropout_rate)
+        self.scale = hidden_dim ** 0.5
+
+    def forward(self, H):
+        Q = self.Wq(H)
+        K = self.Wk(H)
+        V = self.Wv(H)
+
+        attention_scores = torch.matmul(Q, K.transpose(-2, -1)) / self.scale
+        attention_scores = F.softmax(attention_scores, dim=-1)
+        drop_attention_scores = self.dropout(attention_scores)
+        C = torch.matmul(drop_attention_scores, V)
+
+        return C
+
+
+
+
+
+
