@@ -21,14 +21,18 @@ class BiRNNEncoder(nn.Module):
 
         self._drop_layer = nn.Dropout(dropout_rate)
 
-        self._hidden_dim = hidden_dim
-
     def forward(self, input_w):
         embed_w = self._word_embedding(input_w)
         dropout_w = self._drop_layer(embed_w)
 
-        hidden_states, _ = self._rnn_cell(dropout_w)
-        last_hidden_states = hidden_states[:, -1, :]
-        #
-        cat_hidden_states = torch.cat((last_hidden_states[:, :self._hidden_dim // 2],
-                                       last_hidden_states[:, self._hidden_dim // 2:]), dim=-1)
+        # output shape: (batch_size, seq_len, num_directions * hidden_size)
+        # h_n shape: (num_layers * num_directions, batch_size, hidden_size)
+        output, (h_n, _) = self._rnn_cell(dropout_w)
+
+        batch_size = input_w.size(0)
+
+        # 将h_n重新排列成一个4D张量，这里的1表示只有一层（考虑到只使用了一个LSTM层），2表示双向（前向和后向）,
+        # -1表示自动计算hidden_size的大小。
+        h_n = h_n.view(1, 2, batch_size, -1).transpose(0, 2)
+        utterance_representation = torch.cat((h_n[:, -1, 0, :], h_n[:, -1, 1, :]), dim=1)
+        return utterance_representation
