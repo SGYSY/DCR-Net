@@ -5,6 +5,33 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class UtteranceEncoder(nn.Module):
+    def __init__(self,
+                 word_embedding: nn.Embedding,
+                 hidden_dim: int,
+                 dropout_rate: float):
+        super().__init__()
+        self.bi_rnn_encoder = BiRNNEncoder(word_embedding, hidden_dim, dropout_rate)
+        self.self_attention = SelfAttention(hidden_dim, dropout_rate)
+
+    def forward(self, dialogues):
+        """
+        dialogues: Tensor representing a batch of dialogues, shape [batch_size, T, K_t]
+        seq_lens: List representing the actual lengths of each dialogue in the batch
+        """
+        batch_size, T, K_t = dialogues.size()
+        H = torch.zeros(batch_size, T, self.bi_rnn_encoder.rnn_cell.hidden_size * 2).to(dialogues.device)
+
+        # 用BiRNNEncoder来编码每一个utterance
+        for i in range(T):
+            utt = dialogues[:, i, :]
+            utt_representation = self.bi_rnn_encoder(utt)
+
+            H[:, i, :] = utt_representation
+
+        C = self.self_attention(H)
+
+
 class BiRNNEncoder(nn.Module):
     def __init__(self,
                  word_embedding: nn.Embedding,
@@ -65,23 +92,6 @@ class SelfAttention(nn.Module):
 
         return C
 
-
-class UtteranceEncoder(nn.Module):
-    def __init__(self,
-                 word_embedding: nn.Embedding,
-                 hidden_dim: int,
-                 dropout_rate: float):
-        super().__init__()
-        self.bi_rnn_encoder = BiRNNEncoder(word_embedding, hidden_dim, dropout_rate)
-        self.self_attention = SelfAttention(hidden_dim, dropout_rate)
-
-    def forward(self, dialogues):
-        """
-        dialogues: Tensor representing a batch of dialogues, shape [batch_size, T, K_t]
-        seq_lens: List representing the actual lengths of each dialogue in the batch
-        """
-        batch_size, T, K_t = dialogues.size()
-        H = torch.zeros(batch_size, T, self.bi_rnn_encoder.rnn_cell.hidden_size * 2).to(dialogues.device)
 
 
 
