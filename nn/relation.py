@@ -3,6 +3,20 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class CoAttention(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, S, D):
+        attention_D = F.softmax(torch.matmul(D, S.transpose(1, 2)), dim=-1)
+        attention_S = F.softmax(torch.matmul(S, D.transpose(1, 2)), dim=-1)
+
+        co_D = D + torch.matmul(attention_D, S)
+        co_S = S + torch.matmul(attention_S, D)
+
+        return co_D, co_S
+
+
 class MLPLayer(nn.Module):
     def __init__(self,
                  input_dim: int,
@@ -10,14 +24,14 @@ class MLPLayer(nn.Module):
         super().__init__()
         self.mlp_layer = MLP(input_dim, hidden_dim)
 
-    def forward(self, S_prime, D_prime):
-        D_cat = torch.cat((S_prime, D_prime), dim=-1)
-        S_cat = torch.cat((S_prime, D_prime), dim=-1)
+    def forward(self, prime_S, prime_D):
+        cat_D = torch.cat((prime_S, prime_D), dim=-1)
+        cat_S = torch.cat((prime_S, prime_D), dim=-1)
 
-        D_mlp = self.mlp_layer(D_cat)
-        S_mlp = self.mlp_layer(S_cat)
+        mlp_D = self.mlp_layer(cat_D)
+        mlp_S = self.mlp_layer(cat_S)
 
-        return D_mlp, S_mlp
+        return mlp_D, mlp_S
 
 
 class MLP(nn.Module):
@@ -43,5 +57,5 @@ class BiLSTM(nn.Module):
         self._rnn_cell = nn.LSTM(input_dim, hidden_dim // 2, bidirectional=True, batch_first=True)
 
     def forward(self, D):
-        output_D, _= self._rnn_cell(D)
+        output_D, _ = self._rnn_cell(D)
         return output_D
