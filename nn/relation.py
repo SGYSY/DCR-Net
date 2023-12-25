@@ -3,6 +3,23 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class MLPLayer(nn.Module):
+    def __init__(self,
+                 input_dim: int,
+                 hidden_dim: int):
+        super().__init__()
+        self.mlp_layer = MLP(input_dim, hidden_dim)
+
+    def forward(self, S_prime, D_prime):
+        D_cat = torch.cat((S_prime, D_prime), dim=-1)
+        S_cat = torch.cat((S_prime, D_prime), dim=-1)
+
+        D_mlp = self.mlp_layer(D_cat)
+        S_mlp = self.mlp_layer(S_cat)
+
+        return D_mlp, S_mlp
+
+
 class MLP(nn.Module):
     def __init__(self,
                  input_dim: int,
@@ -28,6 +45,3 @@ class BiLSTM(nn.Module):
     def forward(self, D):
         output_D, _= self._rnn_cell(D)
         return output_D
-
-
-
