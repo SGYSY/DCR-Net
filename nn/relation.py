@@ -3,6 +3,32 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class CoInteractiveRelation(nn.Module):
+    def __init__(self,
+                 input_dim: int,
+                 hidden_dim: int):
+        """
+        Use MLP + Co-Attention to Encode
+        """
+
+        super().__init__()
+        self._mlp = MLP(input_dim, hidden_dim)
+        self._lstm = BiLSTM(input_dim, hidden_dim)
+        self._mlp_layer = MLPLayer(input_dim, hidden_dim)
+        self._co_attention = CoAttention()
+
+    def forward(self, S, D):
+        S = self._mlp(S)
+        D = self._lstm(D)
+
+        mlp_D = self._mlp_layer(D)
+        mlp_S = self._mlp_layer(S)
+
+        co_D, co_S = self._co_attention(S, D)
+
+        return mlp_D, mlp_S, co_D, co_S
+
+
 class CoAttention(nn.Module):
     def __init__(self):
         super().__init__()
@@ -51,8 +77,7 @@ class MLP(nn.Module):
 class BiLSTM(nn.Module):
     def __init__(self,
                  input_dim: int,
-                 hidden_dim: int,
-                 dropout_rate: float):
+                 hidden_dim: int):
         super().__init__()
         self._rnn_cell = nn.LSTM(input_dim, hidden_dim // 2, bidirectional=True, batch_first=True)
 
