@@ -17,7 +17,7 @@ class UtteranceEncoder(nn.Module):
         super().__init__()
 
         if pretrained_model != "none":
-            self._utt_encoder = UtterancePretrainedMOdel()
+            self._utt_encoder = UtterancePretrainedModel(hidden_dim, pretrained_model)
         else:
             self._utt_encoder = BiRNNEncoder(word_embedding, hidden_dim, dropout_rate)
         self._pretrained_model = pretrained_model
@@ -27,7 +27,7 @@ class UtteranceEncoder(nn.Module):
     def add_missing_arg(self, pretrained_model):
         self._pretrained_model = pretrained_model
 
-    def forward(self, dialogues):
+    def forward(self, dialogues, mask=None):
         """
         dialogues: Tensor representing a batch of dialogues, shape [batch_size, T, K_t]
         seq_lens: List representing the actual lengths of each dialogue in the batch
@@ -109,6 +109,28 @@ class SelfAttention(nn.Module):
         return C
 
 
+class UtterancePretrainedModel(nn.Module):
+    HIDDEN_DIM = 768
 
+    def __init__(self,
+                 hidden_dim: int,
+                 pretrained_model):
+        super().__init__()
+        self._pretrained_model = pretrained_model
 
+        if pretrained_model == "bert":
+            self._encoder = BertModel.from_pretrained("bert-base-uncased")
+        else:
+            assert False, "Something wrong with the parameter --pretrained_model"
 
+        self._linear = nn.Linear(UtterancePretrainedModel.HIDDEN_DIM, hidden_dim)
+
+    def forward(self, input_p, mask):
+        outputs = self._encoder(input_p, attention_mask=mask)
+
+        # 获取[CLS]标记的输出，这通常是Transformer模型的第一个输出，用于下游任务
+        cls_output = outputs.last_hidden_state[:, 0, :]
+
+        transformed_output = self._linear(cls_output)
+
+        return transformed_output
