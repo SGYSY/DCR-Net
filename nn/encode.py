@@ -24,6 +24,7 @@ class UtteranceEncoder(nn.Module):
 
         self.self_attention = SelfAttention(hidden_dim, dropout_rate)
 
+    # Add for loading best model
     def add_missing_arg(self, pretrained_model):
         self._pretrained_model = pretrained_model
 
@@ -121,7 +122,7 @@ class UtterancePretrainedModel(nn.Module):
         if pretrained_model == "bert":
             self._encoder = BertModel.from_pretrained("bert-base-uncased")
         else:
-            assert False, "Something wrong with the parameter --pretrained_model"
+            assert False, "Unsupported pretrained_model argument, expected 'bert' but got: {}".format(pretrained_model)
 
         self._linear = nn.Linear(UtterancePretrainedModel.HIDDEN_DIM, hidden_dim)
 
