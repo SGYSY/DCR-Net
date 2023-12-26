@@ -9,10 +9,23 @@ class UtteranceEncoder(nn.Module):
     def __init__(self,
                  word_embedding: nn.Embedding,
                  hidden_dim: int,
-                 dropout_rate: float):
+                 dropout_rate: float,
+                 pretrained_model: str):
+        """
+        Use BiLSTM + Self_Attention to Encode
+        """
         super().__init__()
-        self.bi_rnn_encoder = BiRNNEncoder(word_embedding, hidden_dim, dropout_rate)
+
+        if pretrained_model != "none":
+            self._utt_encoder = UtterancePretrainedMOdel()
+        else:
+            self._utt_encoder = BiRNNEncoder(word_embedding, hidden_dim, dropout_rate)
+        self._pretrained_model = pretrained_model
+
         self.self_attention = SelfAttention(hidden_dim, dropout_rate)
+
+    def add_missing_arg(self, pretrained_model):
+        self._pretrained_model = pretrained_model
 
     def forward(self, dialogues):
         """
@@ -25,11 +38,14 @@ class UtteranceEncoder(nn.Module):
         # 用BiRNNEncoder来编码每一个utterance
         for i in range(T):
             utt = dialogues[:, i, :]
-            utt_representation = self.bi_rnn_encoder(utt)
-
+            if self._pretrained_model != "none":
+                utt_representation = self._utt_encoder(utt, mask)
+            else:
+                utt_representation = self._utt_encoder(utt)
             H[:, i, :] = utt_representation
 
         C = self.self_attention(H)
+        return C
 
 
 class BiRNNEncoder(nn.Module):
