@@ -6,16 +6,18 @@ import torch.nn.functional as F
 class CoInteractiveRelation(nn.Module):
     def __init__(self,
                  input_dim: int,
-                 hidden_dim: int):
+                 hidden_dim: int,
+                 dropout):
         """
         Use MLP + Co-Attention to Encode
         """
 
         super().__init__()
-        self._mlp = MLP(input_dim, hidden_dim)
-        self._lstm = BiLSTM(input_dim, hidden_dim)
-        self._mlp_layer = MLPLayer(input_dim, hidden_dim)
-        self._co_attention = CoAttention()
+        self.dropout = dropout
+        self._mlp = MLP(input_dim, hidden_dim, dropout=dropout)
+        self._lstm = BiLSTM(input_dim, hidden_dim, dropout=dropout)
+        self._mlp_layer = MLPLayer(input_dim, hidden_dim, dropout=dropout)
+        self._co_attention = CoAttention(dropout=dropout)
 
     def forward(self, S, D):
         S = self._mlp(S)
@@ -30,8 +32,9 @@ class CoInteractiveRelation(nn.Module):
 
 
 class CoAttention(nn.Module):
-    def __init__(self):
+    def __init__(self, dropout):
         super().__init__()
+        self.dropout = dropout
 
     def forward(self, S, D):
         attention_D = F.softmax(torch.matmul(D, S.transpose(1, 2)), dim=-1)
@@ -46,9 +49,10 @@ class CoAttention(nn.Module):
 class MLPLayer(nn.Module):
     def __init__(self,
                  input_dim: int,
-                 hidden_dim: int):
+                 hidden_dim: int,
+                 dropout):
         super().__init__()
-        self.mlp_layer = MLP(input_dim, hidden_dim)
+        self.mlp_layer = MLP(input_dim, hidden_dim, dropout=dropout)
 
     def forward(self, prime_S, prime_D):
         cat_D = torch.cat((prime_S, prime_D), dim=-1)
@@ -63,23 +67,28 @@ class MLPLayer(nn.Module):
 class MLP(nn.Module):
     def __init__(self,
                  input_dim: int,
-                 hidden_dim: int):
+                 hidden_dim: int,
+                 dropout):
         super().__init__()
         self._mlp1_cell = nn.Linear(input_dim, hidden_dim)
         self._mlp2_cell = nn.Linear(hidden_dim, input_dim)
+        self._dropout = nn.Dropout(dropout)
 
     def forward(self, S):
         relu_S = F.relu(self._mlp1_cell(S))
-        output_S = self._mlp2_cell(relu_S)
+        drop_S = self._dropout(relu_S)
+        output_S = self._mlp2_cell(drop_S)
         return output_S
 
 
 class BiLSTM(nn.Module):
     def __init__(self,
                  input_dim: int,
-                 hidden_dim: int):
+                 hidden_dim: int,
+                 dropout):
         super().__init__()
-        self._rnn_cell = nn.LSTM(input_dim, hidden_dim // 2, bidirectional=True, batch_first=True)
+        self._rnn_cell = nn.LSTM(input_dim, hidden_dim // 2, bidirectional=True,
+                                 batch_first=True, dropout=dropout)
 
     def forward(self, D):
         output_D, _ = self._rnn_cell(D)
