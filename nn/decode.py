@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-from nn.relation import CoInteractiveRelation
+from nn.relation import StackedRelation
 
 
 class RelationDecoder(nn.Module):
@@ -19,10 +19,13 @@ class RelationDecoder(nn.Module):
         self._sent_layer_dict = nn.ModuleDict()
         self._act_layer_dict = nn.ModuleDict()
 
-        self._relate_layer = CoInteractiveRelation(input_dim, hidden_dim, dropout_rate)
+        self._relate_layer = StackedRelation(input_dim, hidden_dim, dropout_rate, num_layer)
 
         self.dar_linear = nn.Linear(hidden_dim, num_dar)
         self.sc_linear = nn.Linear(hidden_dim, num_sc)
+
+    def add_missing_arg(self, layer=3):
+        self._relate_layer.add_missing_arg(layer)
 
     def forward(self, DL, SL):
         # Apply linear transformation followed by softmax
