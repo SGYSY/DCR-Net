@@ -16,18 +16,17 @@ class RelationDecoder(nn.Module):
 
         self._num_layer = num_layer
 
-        self._sent_layer_dict = nn.ModuleDict()
-        self._act_layer_dict = nn.ModuleDict()
-
         self._relate_layer = StackedRelation(input_dim, hidden_dim, dropout_rate, num_layer)
 
-        self.dar_linear = nn.Linear(hidden_dim, num_dar)
-        self.sc_linear = nn.Linear(hidden_dim, num_sc)
+        self.dar_linear = nn.Linear(hidden_dim, num_dar, bias=True)
+        self.sc_linear = nn.Linear(hidden_dim, num_sc, bias=True)
 
     def add_missing_arg(self, layer=3):
         self._relate_layer.add_missing_arg(layer)
 
-    def forward(self, DL, SL):
+    def forward(self, S, D):
+        SL, DL = self._relate_layer(S, D)
+
         # Apply linear transformation followed by softmax
         dar_linear = self.dar_linear(DL)
         sc_linear = self.sc_linear(SL)
