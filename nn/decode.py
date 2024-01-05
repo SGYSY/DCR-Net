@@ -6,12 +6,13 @@ from nn.relation import StackedRelation
 
 class RelationDecoder(nn.Module):
     def __init__(self,
-                 hidden_dim: int,
-                 num_dar: int,
                  num_sc: int,
+                 num_dar: int,
+                 hidden_dim: int,
+                 num_layer: int,
                  dropout_rate: float,
                  input_dim: int,
-                 num_layer: int):
+                 ):
         super().__init__()
 
         self._num_layer = num_layer
@@ -36,3 +37,17 @@ class RelationDecoder(nn.Module):
         sc_prob = F.softmax(sc_linear, dim=-1)
 
         return dar_prob, sc_prob
+
+
+class LinearDecoder(nn.Module):
+    def __init__(self,
+                 num_sent: int,
+                 num_act: int,
+                 hidden_dim: int):
+        super().__init__()
+
+        self._sent_linear = nn.Linear(hidden_dim, num_sent)
+        self._act_linear = nn.Linear(hidden_dim, num_act)
+
+    def forward(self, input_h):
+        return self._sent_linear(input_h), self._act_linear(input_h)

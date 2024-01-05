@@ -1,4 +1,4 @@
-from transformers import BertModel, RobertaModel, XLNetModel, AlbertModel, ElectraModel
+from transformers import BertModel
 
 import torch
 import torch.nn as nn
