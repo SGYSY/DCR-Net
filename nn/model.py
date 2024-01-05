@@ -103,14 +103,48 @@ class TaggingAgent(nn.Module):
                     # extend可以把每个句子添加到句子列表中 而不是将pad_dial作为一个元素添加
                     pad_w_list[-1].extend(iterable_support(self._word_vocab.index, pad_dial))
 
+        # 处理分词
+        cls_sign = self._piece_vocab.CLS_SIGN  # 存储分词后的开头符号
+        # 创建存储分词后的对话列表
+        piece_list, sep_sign = [], self._piece_vocab.SEP_SIGN  # 存储分词后的分隔符号
 
+        for dial_i in dial_list(0, len(dial_list)):
+            piece_list.append([])
 
+            for turn in dial_list[dial_i]:
+                # 使用_piece_vocab.tokenize函数对句子进行分词，得到分词后的句子列表
+                seg_list = self._piece_vocab.tokenize(turn)
+                piece_list[-1].append([cls_sign] + seg_list + [sep_sign])
 
+            if len(dial_list[dial_i]) < max_dial_len:
+                pad_dial = [[cls_sign, sep_sign]] * (max_dial_len - len(dial_list[dial_i]))
+                piece_list[-1].extend(pad_dial)
 
+        # 处理分词后句子长度和填充的过程
+        p_len_list = [[len(u) for u in d] for d in piece_list]
+        max_p_len = max(expand_list(p_len_list))  # expand_list将嵌套的长度列表展开为一维列表
 
+        # 存储填充后分词的句子列表和填充掩码
+        pad_p_list, mask = [], []
+        for dial_i in range(0, len(piece_list)):
+            pad_p_list.append([])
+            mask.append([])
 
+            for turn in piece_list[dial_i]:
+                pad_t = turn + [pad_sign] * (max_p_len - len(turn))
+                pad_p_list[-1].append(self._piece_vocab.index(pad_t))  # 转换为分词后的词汇表索引
+                mask[-1].append([1] * len(turn) + [0] * (max_p_len - len(turn)))  # 创建掩码列表
 
+        var_w_dial = torch.LongTensor(pad_w_list)
+        var_p_dial = torch.LongTensor(pad_p_list)
+        var_mask = torch.LongTensor(mask)
 
+        if torch.cuda.is_available():
+            var_w_dial = var_w_dial.cuda()
+            var_p_dial = var_p_dial.cuda()
+            var_mask = var_mask.cuda()
+
+        return var_w_dial, var_p_dial, var_mask
 
 
 
