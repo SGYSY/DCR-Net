@@ -150,6 +150,10 @@ class TaggingAgent(nn.Module):
 
     def predict(self, utt_list):
         var_utt, var_p, mask, len_list, _ = self._wrap_paddding(utt_list, False)
+        # 第一维：对话列表中的对话索引（batch size）
+        # 第二维：每个对话中的语句索引（序列长度）
+        # 第三维：预测的类别概率分布（类别个数）
+        # 举个例子，如果你有2个对话，每个对话有3句话，要预测的情感类别有4种，那么 pred_sent 的形状将是 [2, 3, 4]。
         if self._pretrained_model != "none":
             pred_act, pred_sent = self.forward(var_p, len_list, mask)
         else:
@@ -166,11 +170,14 @@ class TaggingAgent(nn.Module):
              for i in range(0, len(trim_list))], dim=0
         )
 
-        # 提取最大预测
+        # 提取最大概率的预测
+        # 返回一个是最高概率值本身（这里不使用）
+        # 另一个是这些概率值对应的索引，这些索引代表预测的类别
         _, top_sent = flat_sent.topk(1, dim=-1)
         _, top_act = flat_act.topk(1, dim=-1)
 
         # 索引转换成Python列表
+        # python列表操作更灵活
         sent_list = top_sent.cpu().numpy().flatten().tolist()
         act_list = top_act.cpu().numpy().flatten().tolist()
 
