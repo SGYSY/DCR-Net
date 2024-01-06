@@ -135,22 +135,55 @@ class TaggingAgent(nn.Module):
                 pad_p_list[-1].append(self._piece_vocab.index(pad_t))  # 转换为分词后的词汇表索引
                 mask[-1].append([1] * len(turn) + [0] * (max_p_len - len(turn)))  # 创建掩码列表
 
+        # 转换为torch张量
         var_w_dial = torch.LongTensor(pad_w_list)
         var_p_dial = torch.LongTensor(pad_p_list)
         var_mask = torch.LongTensor(mask)
 
+        # 移动到GPU上计算
         if torch.cuda.is_available():
             var_w_dial = var_w_dial.cuda()
             var_p_dial = var_p_dial.cuda()
             var_mask = var_mask.cuda()
 
-        return var_w_dial, var_p_dial, var_mask
+        return var_w_dial, var_p_dial, var_mask, turn_len_list, p_len_list
 
+    def predict(self, utt_list):
+        var_utt, var_p, mask, len_list, _ = self._wrap_paddding(utt_list, False)
+        if self._pretrained_model != "none":
+            pred_act, pred_sent = self.forward(var_p, len_list, mask)
+        else:
+            pred_act, pred_sent = self.forward(var_utt, len_list, mask=None)
 
+        trim_list = [len(l) for l in len_list]
+        # [i, :trim_list[i], :] 第一个i是对话索引 第二个是选择前trim_list[i]个元素 第三个是表示选择所有维度
+        flat_sent = torch.cat(
+            [pred_sent[i, :trim_list[i], :]
+             for i in range(0, len(trim_list))], dim=0
+        )
+        flat_act = torch.cat(
+            [pred_act[i, :trim_list[i], :]
+             for i in range(0, len(trim_list))], dim=0
+        )
 
+        # 提取最大预测
+        _, top_sent = flat_sent.topk(1, dim=-1)
+        _, top_act = flat_act.topk(1, dim=-1)
 
+        # 索引转换成Python列表
+        sent_list = top_sent.cpu().numpy().flatten().tolist()
+        act_list = top_act.cpu().numpy().flatten().tolist()
 
+        # 嵌套列表
+        # 将扁平的列表重新嵌套，以匹配原始输入数据的结构
+        nest_sent = nest_list(sent_list, trim_list)
+        nest_act = nest_list(act_list, trim_list)
 
+        # 词汇表转换，将索引转换为可读的字符串
+        string_sent = iterable_support(self._sent_vocab.get, nest_sent)
+        string_act = iterable_support(self._act_vocab.get, nest_act)
+
+        return string_sent, string_act
 
 
 
