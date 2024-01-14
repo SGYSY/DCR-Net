@@ -192,9 +192,52 @@ class TaggingAgent(nn.Module):
 
         return string_sent, string_act
 
+    # 计算模型在给定数据集上的性能指标
+    def measure(self, utt_list, sent_list, act_list):
+        var_utt, var_p, mask, len_list, _ = self._wrap_paddding(utt_list, True)
 
+        # 转换为索引列表
+        flat_sent = iterable_support(
+            self._sent_vocab.index, sent_list
+        )
+        flat_act = iterable_support(
+            self._word_vocab.index, act_list
+        )
 
+        # 扩展列表
+        index_sent = expand_list(flat_sent)
+        index_act = expand_list(flat_act)
 
+        # 转换为pytorch张量
+        var_sent = torch.LongTensor(index_sent)
+        var_act = torch.LongTensor(index_act)
 
+        if torch.cuda.is_available():
+            var_sent = var_sent.cuda()
+            var_act = var_act.cuda()
 
+        if self._pretrained_model != "none":
+            pred_sent, pred_act = self.forward(var_p, len_list, mask)
+        else:
+            pred_sent, pred_act = self.forward(var_utt, len_list, mask=None)
 
+        trim_list = [len(l) for l in len_list]
+
+        # 将填充后的预测结果切割成实际长度 并拼接成一个扁平的预测张量
+        flat_pred_s = torch.cat(
+            [pred_sent[i, :trim_list[i], :] for
+             i in range(0, len(trim_list))], dim=0
+        )
+        flat_pred_a = torch.cat(
+            [pred_act[i, :trim_list[i], :] for
+             i in range(0, len(trim_list))], dim=0
+        )
+
+        # 计算损失
+        sent_loss = self._criterion(
+            F.log_softmax(flat_pred_s, dim=-1), var_sent
+        )
+        act_loss = self._criterion(
+            F.log_softmax(flat_pred_a, dim=-1), var_act
+        )
+        return sent_loss + act_loss
