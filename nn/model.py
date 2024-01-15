@@ -90,9 +90,10 @@ class TaggingAgent(nn.Module):
             for turn in dial_list[dial_i]:
                 if use_noise:
                     noise_turn = noise_augment(self._word_vocab, turn, 5.0)
+                    indexed_turn = [self._word_vocab.index(token) for token in noise_turn]
                 else:
-                    noise_turn = turn
-                pad_w_list[-1].append(noise_turn + [self._word_vocab.index(pad_sign)] * (max_turn_len - len(turn)))
+                    indexed_turn = [self._word_vocab.index(token) for token in turn]
+                pad_w_list[-1].append(indexed_turn + [self._word_vocab.index(pad_sign)] * (max_turn_len - len(turn)))
             # 对每个对话进行填充，以达到最大对话长度（不能共享同一个列表引用，不然不能修改其中一个）
             for _ in range(max_dial_len - len(dial_list[dial_i])):
                 pad_w_list[-1].append([self._word_vocab.index(pad_sign)] * max_turn_len)
