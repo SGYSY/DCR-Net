@@ -34,7 +34,7 @@ class UtteranceEncoder(nn.Module):
         seq_lens: List representing the actual lengths of each dialogue in the batch
         """
         batch_size, T, K_t = dialogues.size()
-        H = torch.zeros(batch_size, T, self.bi_rnn_encoder.rnn_cell.hidden_size * 2).to(dialogues.device)
+        H = torch.zeros(batch_size, T, self._utt_encoder.rnn_cell.hidden_size * 2).to(dialogues.device)
 
         # 用BiRNNEncoder来编码每一个utterance
         for i in range(T):
@@ -77,8 +77,21 @@ class BiRNNEncoder(nn.Module):
 
         # 将h_n重新排列成一个4D张量，这里的1表示只有一层（考虑到只使用了一个LSTM层），2表示双向（前向和后向）,
         # -1表示自动计算hidden_size的大小。
-        h_n = h_n.view(1, 2, batch_size, -1).transpose(0, 2)
-        utterance_representation = torch.cat((h_n[:, -1, 0, :], h_n[:, -1, 1, :]), dim=1)
+        # 这里做了对双向和单向LSTM的不同处理，但是经过测试这里的的确是BiLSTM
+        num_layers = self._rnn_cell.num_layers
+        num_directions = 2 if self._rnn_cell.bidirectional else 1
+        hidden_size = self._rnn_cell.hidden_size
+
+        # 重新排列h_n以使其符合(batch_size, num_layers, num_directions, hidden_size)
+        h_n = h_n.view(num_layers, num_directions, batch_size, hidden_size)
+        h_n = h_n.transpose(0, 2).transpose(1, 2)
+
+        # 对于双向，连接最后一层的两个方向的隐藏状态
+        # 对于单向，直接使用最后一层的隐藏状态
+        if self._rnn_cell.bidirectional:
+            utterance_representation = torch.cat((h_n[:, -1, 0, :], h_n[:, -1, 1, :]), dim=-1)
+        else:
+            utterance_representation = h_n[:, -1, 0, :]
         return utterance_representation
 
     @property
