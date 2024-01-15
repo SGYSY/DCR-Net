@@ -22,12 +22,9 @@ class TaggingAgent(nn.Module):
                  embedding_dim: int,
                  hidden_dim: int,
                  num_layer: int,
-                 dcr_layer: int,
-                 dcr_dropout_rate: float,
                  dropout_rate: float,
                  use_linear_decoder: bool,
-                 pretrained_model: str,
-                 input_dim: int):
+                 pretrained_model: str):
 
         super().__init__()
 
@@ -48,7 +45,7 @@ class TaggingAgent(nn.Module):
         else:
             self._decoder = RelationDecoder(
                 len(word_vocab), len(act_vocab)
-                , hidden_dim, num_layer, dropout_rate, input_dim
+                , hidden_dim, num_layer, dropout_rate, hidden_dim
             )
 
         # Loss function
@@ -86,29 +83,26 @@ class TaggingAgent(nn.Module):
 
         # 储存填充后的对话列表和填充符号
         pad_w_list, pad_sign = [], self._word_vocab.PAD_SIGN
-        for dial_i in range(0, len(dial_list)):
+        # 对于每个对话
+        for dial_i in range(len(dial_list)):
+            # 对每个句子进行填充
             pad_w_list.append([])
-
             for turn in dial_list[dial_i]:
                 if use_noise:
                     noise_turn = noise_augment(self._word_vocab, turn, 5.0)
                 else:
                     noise_turn = turn
-                pad_utt = noise_turn + [pad_sign] * (max_turn_len - len(turn))
-                # iterable_support生成可迭代对话列表对象，用于迭代填充后的句子
-                pad_w_list[-1].append(iterable_support(self._word_vocab.index, pad_utt))
-
-                if len(dial_list[dial_i]) < max_dial_len:
-                    pad_dial = [[pad_sign] * max_turn_len] * (max_dial_len - len(dial_list[dial_i]))
-                    # extend可以把每个句子添加到句子列表中 而不是将pad_dial作为一个元素添加
-                    pad_w_list[-1].extend(iterable_support(self._word_vocab.index, pad_dial))
+                pad_w_list[-1].append(noise_turn + [self._word_vocab.index(pad_sign)] * (max_turn_len - len(turn)))
+            # 对每个对话进行填充，以达到最大对话长度（不能共享同一个列表引用，不然不能修改其中一个）
+            for _ in range(max_dial_len - len(dial_list[dial_i])):
+                pad_w_list[-1].append([self._word_vocab.index(pad_sign)] * max_turn_len)
 
         # 处理分词
         cls_sign = self._piece_vocab.CLS_SIGN  # 存储分词后的开头符号
         # 创建存储分词后的对话列表
         piece_list, sep_sign = [], self._piece_vocab.SEP_SIGN  # 存储分词后的分隔符号
 
-        for dial_i in dial_list(0, len(dial_list)):
+        for dial_i in range(0, len(dial_list)):
             piece_list.append([])
 
             for turn in dial_list[dial_i]:

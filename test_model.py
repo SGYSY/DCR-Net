@@ -14,7 +14,7 @@ parser.add_argument("--pretrained_model", "-pm", type=str, default="none",
 # 指定数据集的目录
 parser.add_argument("--data_dir", "-dd", type=str, default="dataset/mastodon")
 # 指定模型和其他任何输出应该被保存到的目录
-parser.add_argument("--save_dir", "-sd", type=str, default="./save")
+parser.add_argument("--save_dir", "-sd", type=str, default="./save/mastodon")
 # 指定处理数据时使用的批处理大小
 parser.add_argument("--batch_size", "-bs", type=int, default=16)
 # 解析参数

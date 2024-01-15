@@ -17,7 +17,7 @@ class RelationDecoder(nn.Module):
 
         self._num_layer = num_layer
 
-        self._relate_layer = StackedRelation(input_dim, hidden_dim, dropout_rate, num_layer)
+        self._relate_layer = StackedRelation(hidden_dim, hidden_dim, dropout_rate, num_layer)
 
         self.dar_linear = nn.Linear(hidden_dim, num_dar, bias=True)
         self.sc_linear = nn.Linear(hidden_dim, num_sc, bias=True)

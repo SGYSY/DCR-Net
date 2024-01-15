@@ -95,18 +95,14 @@ class DataHub(object):
 # 加载和处理数据
 class _GeneralDataSet(Dataset):
 
-    def __init__(self, utt, sent, act, adj, adj_full, adj_id):
+    def __init__(self, utt, sent, act):
         self._utt = utt
         self._sent = sent
         self._act = act
-        self._adj = adj
-        self._adj_full = adj_full
-        self._adj_id = adj_id
 
     # 通过索引获取数据集中的单个项
     def __getitem__(self, item):
-        return self._utt[item], self._sent[item], self._act[item], \
-            self._adj[item], self._adj_full[item], self._adj_id[item]
+        return self._utt[item], self._sent[item], self._act[item]
 
     # 返回情感标签列表的长度
     def __len__(self):
